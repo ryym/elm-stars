@@ -3,13 +3,14 @@ module Main exposing (main)
 import Browser
 import Browser.Navigation as Nav
 import Html exposing (..)
-import Html.Attributes exposing (size, src)
+import Html.Attributes exposing (class, href, size, src)
+import Route exposing (Route, toRoute)
 import Url exposing (Url)
 
 
 type alias Model =
     { key : Nav.Key
-    , url : Url
+    , route : Route
     }
 
 
@@ -32,12 +33,20 @@ main =
 
 init : () -> Url -> Nav.Key -> ( Model, Cmd Msg )
 init _ url key =
-    ( Model key url, Cmd.none )
+    ( Model key (toRoute url), Cmd.none )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    ( model, Cmd.none )
+    case msg of
+        LinkClicked (Browser.Internal url) ->
+            ( model, Nav.pushUrl model.key (Url.toString url) )
+
+        LinkClicked (Browser.External href) ->
+            ( model, Nav.load href )
+
+        UrlChanged url ->
+            ( { model | route = toRoute url }, Cmd.none )
 
 
 subscriptions : Model -> Sub Msg
@@ -60,5 +69,28 @@ viewBody model =
             [ p [] [ text "Type username or repo full name and hit 'Go':" ]
             , input [ size 45 ] []
             , button [] [ text "Go!" ]
+            , nav [ class "header-nav" ]
+                [ a [ href "/" ] [ text "top" ]
+                , a [ href "/ryym" ] [ text "ryym" ]
+                , a [ href "/this/is/invalid/path" ] [ text "404" ]
+                ]
+            , hr [] []
+            , viewPage model
             ]
         ]
+
+
+viewPage : Model -> Html Msg
+viewPage model =
+    case model.route of
+        Route.Home ->
+            div []
+                [ p [] [ text "This is Home" ] ]
+
+        Route.User name ->
+            div []
+                [ h2 [] [ text <| "User : " ++ name ] ]
+
+        Route.NotFound ->
+            div []
+                [ p [] [ text "Not Found" ] ]
