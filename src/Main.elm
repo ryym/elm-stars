@@ -4,7 +4,7 @@ import Browser
 import Browser.Navigation as Nav
 import Dict exposing (Dict)
 import Html exposing (..)
-import Html.Attributes exposing (class, href, size, src)
+import Html.Attributes exposing (alt, class, href, size, src)
 import Http
 import Route exposing (Route, toRoute)
 import Url exposing (Url)
@@ -132,8 +132,8 @@ viewPage model =
             case Dict.get name model.users of
                 Just user ->
                     div []
-                        [ h2 [] [ text <| "User : " ++ user.login ]
-                        , img [ src user.avatar.url ] []
+                        [ h2 [] [ text <| user.login ++ " (" ++ user.name ++ ")" ]
+                        , img [ src user.avatar.url, alt "", class "user-avatar" ] []
                         ]
 
                 Nothing ->

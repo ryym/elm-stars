@@ -9,12 +9,14 @@ type alias Avatar =
 
 type alias User =
     { login : String
+    , name : String
     , avatar : Avatar
     }
 
 
 decoder : Decoder User
 decoder =
-    J.map2 User
+    J.map3 User
         (field "login" J.string)
+        (field "name" J.string)
         (field "avatar_url" <| J.map Avatar J.string)

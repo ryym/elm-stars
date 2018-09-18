@@ -17,3 +17,7 @@ hr {
 .header-nav > a {
   margin: 0 12px;
 }
+
+.user-avatar {
+  width: 72px;
+}
