@@ -1,12 +1,13 @@
 module Main exposing (main)
 
-import Api.GitHub
+import Api.GitHub exposing (StarredList)
 import Browser
 import Browser.Navigation as Nav
 import Dict exposing (Dict)
 import Html exposing (..)
 import Html.Attributes exposing (alt, class, href, size, src)
 import Http
+import Repo exposing (Repo)
 import Route exposing (Route, toRoute)
 import Url exposing (Url)
 import User exposing (User)
@@ -16,6 +17,7 @@ type alias Model =
     { key : Nav.Key
     , route : Route
     , users : Dict String User
+    , repos : Dict String Repo
     }
 
 
@@ -23,6 +25,7 @@ type Msg
     = LinkClicked Browser.UrlRequest
     | UrlChanged Url
     | UserFetched (Result Http.Error User)
+    | StarredListFetched (Result Http.Error StarredList)
 
 
 main : Program () Model Msg
@@ -43,6 +46,7 @@ init _ url key =
         { key = key
         , route = toRoute url
         , users = Dict.empty
+        , repos = Dict.empty
         }
 
 
@@ -56,7 +60,10 @@ initPage model =
                         Cmd.none
 
                     else
-                        Api.GitHub.user UserFetched name
+                        Cmd.batch
+                            [ Api.GitHub.user UserFetched name
+                            , Api.GitHub.starred StarredListFetched name
+                            ]
             in
             ( model, cmd )
 
@@ -80,6 +87,30 @@ update msg model =
             case result of
                 Ok user ->
                     ( { model | users = Dict.insert user.login user model.users }, Cmd.none )
+
+                Err err ->
+                    -- TODO: Handle error.
+                    ( model, Cmd.none )
+
+        StarredListFetched result ->
+            case result of
+                Ok starred ->
+                    let
+                        a =
+                            starred
+
+                        insertBoth ( repo, user ) ( repos, users ) =
+                            ( Dict.insert repo.fullName repo repos
+                            , Dict.insert user.login user users
+                            )
+
+                        ( mergedRepos, mergedUsers ) =
+                            List.foldl
+                                insertBoth
+                                ( model.repos, model.users )
+                                starred
+                    in
+                    ( { model | users = mergedUsers, repos = mergedRepos }, Cmd.none )
 
                 Err err ->
                     -- TODO: Handle error.
@@ -128,8 +159,15 @@ viewPage model =
             case Dict.get name model.users of
                 Just user ->
                     div []
-                        [ h2 [] [ text <| user.login ++ " (" ++ user.name ++ ")" ]
+                        [ h2 [] [ text <| user.login ]
                         , img [ src user.avatar.url, alt "", class "user-avatar" ] []
+                        , h3 [] [ text "starred repositories" ]
+
+                        -- XXX: Should store repository order.
+                        , ul [] <|
+                            List.map
+                                (\repo -> li [] [ text repo.fullName ])
+                                (Dict.values model.repos)
                         ]
 
                 Nothing ->
