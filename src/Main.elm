@@ -1,5 +1,6 @@
 module Main exposing (main)
 
+import Api.GitHub
 import Browser
 import Browser.Navigation as Nav
 import Dict exposing (Dict)
@@ -9,10 +10,6 @@ import Http
 import Route exposing (Route, toRoute)
 import Url exposing (Url)
 import User exposing (User)
-
-
-
--- import  Http
 
 
 type alias Model =
@@ -59,8 +56,7 @@ initPage model =
                         Cmd.none
 
                     else
-                        Http.get ("https://api.github.com/users/" ++ name) User.decoder
-                            |> Http.send UserFetched
+                        Api.GitHub.user UserFetched name
             in
             ( model, cmd )
 
