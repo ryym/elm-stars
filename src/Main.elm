@@ -2,21 +2,30 @@ module Main exposing (main)
 
 import Browser
 import Browser.Navigation as Nav
+import Dict exposing (Dict)
 import Html exposing (..)
 import Html.Attributes exposing (class, href, size, src)
+import Http
 import Route exposing (Route, toRoute)
 import Url exposing (Url)
+import User exposing (User)
+
+
+
+-- import  Http
 
 
 type alias Model =
     { key : Nav.Key
     , route : Route
+    , users : Dict String User
     }
 
 
 type Msg
     = LinkClicked Browser.UrlRequest
     | UrlChanged Url
+    | UserFetched (Result Http.Error User)
 
 
 main : Program () Model Msg
@@ -33,7 +42,30 @@ main =
 
 init : () -> Url -> Nav.Key -> ( Model, Cmd Msg )
 init _ url key =
-    ( Model key (toRoute url), Cmd.none )
+    initPage
+        { key = key
+        , route = toRoute url
+        , users = Dict.empty
+        }
+
+
+initPage : Model -> ( Model, Cmd Msg )
+initPage model =
+    case model.route of
+        Route.User name ->
+            let
+                cmd =
+                    if Dict.member name model.users then
+                        Cmd.none
+
+                    else
+                        Http.get ("https://api.github.com/users/" ++ name) User.decoder
+                            |> Http.send UserFetched
+            in
+            ( model, cmd )
+
+        _ ->
+            ( model, Cmd.none )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -46,7 +78,16 @@ update msg model =
             ( model, Nav.load href )
 
         UrlChanged url ->
-            ( { model | route = toRoute url }, Cmd.none )
+            initPage { model | route = toRoute url }
+
+        UserFetched result ->
+            case result of
+                Ok user ->
+                    ( { model | users = Dict.insert user.login user model.users }, Cmd.none )
+
+                Err err ->
+                    -- TODO: Handle error.
+                    ( model, Cmd.none )
 
 
 subscriptions : Model -> Sub Msg
@@ -88,8 +129,16 @@ viewPage model =
                 [ p [] [ text "This is Home" ] ]
 
         Route.User name ->
-            div []
-                [ h2 [] [ text <| "User : " ++ name ] ]
+            case Dict.get name model.users of
+                Just user ->
+                    div []
+                        [ h2 [] [ text <| "User : " ++ user.login ]
+                        , img [ src user.avatar.url ] []
+                        ]
+
+                Nothing ->
+                    div []
+                        [ p [] [ text "Loading..." ] ]
 
         Route.NotFound ->
             div []
