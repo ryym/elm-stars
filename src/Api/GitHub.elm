@@ -1,7 +1,7 @@
 module Api.GitHub exposing (StarredList, starred, user)
 
-import Api.Http
-import Http
+import Api.Http exposing (Error(..), JsonResult, Response, getJson)
+import Http exposing (Request)
 import Json.Decode as J exposing (Decoder, field)
 import Repo exposing (Repo)
 import Task
@@ -30,11 +30,26 @@ url paths query =
     Url.Builder.crossOrigin "https://api.github.com" paths query
 
 
-user : (Result Http.Error User -> msg) -> String -> Cmd msg
+flatResult : Result Http.Error (JsonResult a) -> Result Error (Response a)
+flatResult ret =
+    case ret of
+        Ok jret ->
+            Result.mapError (\e -> JsonError e) jret
+
+        Err err ->
+            Err (HttpError err)
+
+
+send : (Result Error (Response a) -> msg) -> Request (JsonResult a) -> Cmd msg
+send msg =
+    Http.send (flatResult >> msg)
+
+
+user : (Result Error (Response User) -> msg) -> String -> Cmd msg
 user msg name =
-    Http.send msg <| Http.get (url [ "users", name ] []) User.decoder
+    getJson (url [ "users", name ] []) User.decoder |> send msg
 
 
-starred : (Result Http.Error StarredList -> msg) -> String -> Cmd msg
+starred : (Result Error (Response StarredList) -> msg) -> String -> Cmd msg
 starred msg name =
-    Http.send msg <| Http.get (url [ "users", name, "starred" ] []) repoListDecoder
+    getJson (url [ "users", name, "starred" ] []) repoListDecoder |> send msg

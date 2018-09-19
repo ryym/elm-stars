@@ -1,6 +1,7 @@
 module Main exposing (main)
 
 import Api.GitHub exposing (StarredList)
+import Api.Http exposing (Error, Response(..))
 import Browser
 import Browser.Navigation as Nav
 import Dict exposing (Dict)
@@ -24,8 +25,8 @@ type alias Model =
 type Msg
     = LinkClicked Browser.UrlRequest
     | UrlChanged Url
-    | UserFetched (Result Http.Error User)
-    | StarredListFetched (Result Http.Error StarredList)
+    | UserFetched (Result Error (Response User))
+    | StarredListFetched (Result Error (Response StarredList))
 
 
 main : Program () Model Msg
@@ -85,7 +86,7 @@ update msg model =
 
         UserFetched result ->
             case result of
-                Ok user ->
+                Ok (Response _ user) ->
                     ( { model | users = Dict.insert user.login user model.users }, Cmd.none )
 
                 Err err ->
@@ -94,7 +95,7 @@ update msg model =
 
         StarredListFetched result ->
             case result of
-                Ok starred ->
+                Ok (Response _ starred) ->
                     let
                         a =
                             starred
