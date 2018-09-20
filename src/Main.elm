@@ -97,9 +97,6 @@ update msg model =
             case result of
                 Ok (Response _ starred) ->
                     let
-                        a =
-                            starred
-
                         insertBoth ( repo, user ) ( repos, users ) =
                             ( Dict.insert repo.fullName repo repos
                             , Dict.insert user.login user users
