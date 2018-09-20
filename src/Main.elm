@@ -19,6 +19,7 @@ type alias Model =
     , route : Route
     , users : Dict String User
     , repos : Dict String Repo
+    , starred : Dict String (List String)
     }
 
 
@@ -26,7 +27,7 @@ type Msg
     = LinkClicked Browser.UrlRequest
     | UrlChanged Url
     | UserFetched (Result Error (Response User))
-    | StarredListFetched (Result Error (Response StarredList))
+    | StarredListFetched String (Result Error (Response StarredList))
 
 
 main : Program () Model Msg
@@ -48,6 +49,7 @@ init _ url key =
         , route = toRoute url
         , users = Dict.empty
         , repos = Dict.empty
+        , starred = Dict.empty
         }
 
 
@@ -63,7 +65,7 @@ initPage model =
                     else
                         Cmd.batch
                             [ Api.GitHub.user UserFetched name
-                            , Api.GitHub.starred StarredListFetched name
+                            , Api.GitHub.starred (StarredListFetched name) name
                             ]
             in
             ( model, cmd )
@@ -93,22 +95,26 @@ update msg model =
                     -- TODO: Handle error.
                     ( model, Cmd.none )
 
-        StarredListFetched result ->
+        StarredListFetched userName result ->
             case result of
-                Ok (Response _ starred) ->
+                Ok (Response res starredList) ->
                     let
-                        insertBoth ( repo, user ) ( repos, users ) =
-                            ( Dict.insert repo.fullName repo repos
-                            , Dict.insert user.login user users
-                            )
+                        appendStarred repo starred =
+                            case Dict.get userName starred of
+                                Just names ->
+                                    Dict.insert userName (repo.fullName :: names) starred
 
-                        ( mergedRepos, mergedUsers ) =
-                            List.foldl
-                                insertBoth
-                                ( model.repos, model.users )
-                                starred
+                                Nothing ->
+                                    Dict.insert userName [ repo.fullName ] starred
+
+                        reduce ( repo, user ) m =
+                            { m
+                                | users = Dict.insert user.login user m.users
+                                , repos = Dict.insert repo.fullName repo m.repos
+                                , starred = appendStarred repo m.starred
+                            }
                     in
-                    ( { model | users = mergedUsers, repos = mergedRepos }, Cmd.none )
+                    ( List.foldl reduce model starredList, Cmd.none )
 
                 Err err ->
                     -- TODO: Handle error.
@@ -160,12 +166,7 @@ viewPage model =
                         [ h2 [] [ text <| user.login ]
                         , img [ src user.avatar.url, alt "", class "user-avatar" ] []
                         , h3 [] [ text "starred repositories" ]
-
-                        -- XXX: Should store repository order.
-                        , ul [] <|
-                            List.map
-                                (\repo -> li [] [ text repo.fullName ])
-                                (Dict.values model.repos)
+                        , ul [] <| viewStarred name model
                         ]
 
                 Nothing ->
@@ -175,3 +176,20 @@ viewPage model =
         Route.NotFound ->
             div []
                 [ p [] [ text "Not Found" ] ]
+
+
+viewStarred : String -> Model -> List (Html Msg)
+viewStarred userName model =
+    let
+        toRepoList repos repoName acc =
+            case Dict.get repoName repos of
+                Just repo ->
+                    repo :: acc
+
+                Nothing ->
+                    acc
+    in
+    Dict.get userName model.starred
+        |> Maybe.withDefault []
+        |> List.foldl (toRepoList model.repos) []
+        |> List.map (\repo -> li [] [ text repo.fullName ])
