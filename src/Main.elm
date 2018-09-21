@@ -4,6 +4,7 @@ import Api.GitHub exposing (StarredList)
 import Api.Http exposing (Error, Response(..))
 import Browser
 import Browser.Navigation as Nav
+import Debug
 import Dict exposing (Dict)
 import Html exposing (..)
 import Html.Attributes exposing (alt, class, href, size, src)
@@ -114,7 +115,10 @@ update msg model =
                             }
 
                         finishFetch m =
-                            { m | starred = Pgs.finishFetch userName ( repoNames, Nothing ) m.starred }
+                            { m | starred = Pgs.finishFetch userName ( repoNames, nextPageUrl ) m.starred }
+
+                        nextPageUrl =
+                            Api.GitHub.nextPageUrl res
 
                         repoNames =
                             List.map (\( repo, _ ) -> repo.fullName) starredList

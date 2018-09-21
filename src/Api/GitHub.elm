@@ -1,6 +1,7 @@
-module Api.GitHub exposing (StarredList, starred, user)
+module Api.GitHub exposing (StarredList, nextPageUrl, starred, user)
 
 import Api.Http exposing (Error(..), JsonResult, Response, getJson)
+import Dict
 import Http exposing (Request)
 import Json.Decode as J exposing (Decoder, field)
 import Repo exposing (Repo)
@@ -38,6 +39,18 @@ flatResult ret =
 
         Err err ->
             Err (HttpError err)
+
+
+{-| Header format:
+Link: <url>; rel="next", <url>; rel="last"
+-}
+nextPageUrl : Http.Response a -> Maybe String
+nextPageUrl res =
+    Dict.get "link" res.headers
+        |> Maybe.map (String.split ",")
+        |> Maybe.andThen (List.filter (String.contains "rel=\"next\"") >> List.head)
+        |> Maybe.andThen (String.split ";" >> List.head)
+        |> Maybe.map (String.slice 1 -1)
 
 
 send : (Result Error (Response a) -> msg) -> Request (JsonResult a) -> Cmd msg
