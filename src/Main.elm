@@ -8,10 +8,15 @@ import Dict exposing (Dict)
 import Html exposing (..)
 import Html.Attributes exposing (alt, class, href, size, src)
 import Http
+import Paginations as Pgs exposing (Pgs)
 import Repo exposing (Repo)
 import Route exposing (Route, toRoute)
 import Url exposing (Url)
 import User exposing (User)
+
+
+
+-- TODO: Define UserName and RepoName types for clarity.
 
 
 type alias Model =
@@ -19,7 +24,7 @@ type alias Model =
     , route : Route
     , users : Dict String User
     , repos : Dict String Repo
-    , starred : Dict String (List String)
+    , starred : Pgs String
     }
 
 
@@ -49,7 +54,7 @@ init _ url key =
         , route = toRoute url
         , users = Dict.empty
         , repos = Dict.empty
-        , starred = Dict.empty
+        , starred = Pgs.empty
         }
 
 
@@ -68,7 +73,7 @@ initPage model =
                             , Api.GitHub.starred (StarredListFetched name) name
                             ]
             in
-            ( model, cmd )
+            ( { model | starred = Pgs.startFetch name model.starred }, cmd )
 
         _ ->
             ( model, Cmd.none )
@@ -99,22 +104,22 @@ update msg model =
             case result of
                 Ok (Response res starredList) ->
                     let
-                        appendStarred repo starred =
-                            case Dict.get userName starred of
-                                Just names ->
-                                    Dict.insert userName (repo.fullName :: names) starred
+                        reduce m =
+                            List.foldl mergeBoth m starredList |> finishFetch
 
-                                Nothing ->
-                                    Dict.insert userName [ repo.fullName ] starred
-
-                        reduce ( repo, user ) m =
+                        mergeBoth ( repo, user ) m =
                             { m
                                 | users = Dict.insert user.login user m.users
                                 , repos = Dict.insert repo.fullName repo m.repos
-                                , starred = appendStarred repo m.starred
                             }
+
+                        finishFetch m =
+                            { m | starred = Pgs.finishFetch userName ( repoNames, Nothing ) m.starred }
+
+                        repoNames =
+                            List.map (\( repo, _ ) -> repo.fullName) starredList
                     in
-                    ( List.foldl reduce model starredList, Cmd.none )
+                    ( reduce model, Cmd.none )
 
                 Err err ->
                     -- TODO: Handle error.
@@ -166,7 +171,7 @@ viewPage model =
                         [ h2 [] [ text <| user.login ]
                         , img [ src user.avatar.url, alt "", class "user-avatar" ] []
                         , h3 [] [ text "starred repositories" ]
-                        , ul [] <| viewStarred name model
+                        , viewStarred name model
                         ]
 
                 Nothing ->
@@ -178,8 +183,17 @@ viewPage model =
                 [ p [] [ text "Not Found" ] ]
 
 
-viewStarred : String -> Model -> List (Html Msg)
+viewStarred : String -> Model -> Html Msg
 viewStarred userName model =
+    if Pgs.isFetching userName model.starred then
+        div [] [ text "Loading..." ]
+
+    else
+        ul [] <| viewStarredList userName model
+
+
+viewStarredList : String -> Model -> List (Html Msg)
+viewStarredList userName model =
     let
         toRepoList repos repoName acc =
             case Dict.get repoName repos of
@@ -189,7 +203,6 @@ viewStarred userName model =
                 Nothing ->
                     acc
     in
-    Dict.get userName model.starred
-        |> Maybe.withDefault []
-        |> List.foldl (toRepoList model.repos) []
+    Pgs.getIds userName model.starred
+        |> List.foldr (toRepoList model.repos) []
         |> List.map (\repo -> li [] [ text repo.fullName ])
