@@ -7,8 +7,8 @@ import Browser.Navigation as Nav
 import Debug
 import Dict exposing (Dict)
 import Html exposing (..)
-import Html.Attributes exposing (alt, class, href, size, src, type_)
-import Html.Events exposing (onClick)
+import Html.Attributes exposing (alt, class, href, size, src, type_, value)
+import Html.Events exposing (onClick, onInput, onSubmit)
 import Http
 import Paginations as Pgs exposing (Pgs)
 import Repo exposing (Repo)
@@ -24,6 +24,7 @@ import User exposing (User)
 type alias Model =
     { key : Nav.Key
     , route : Route
+    , query : String
     , users : Dict String User
     , repos : Dict String Repo
     , starred : Pgs String
@@ -33,6 +34,8 @@ type alias Model =
 type Msg
     = LinkClicked Browser.UrlRequest
     | UrlChanged Url
+    | InputQuery String
+    | Search
     | UserFetched (Result Error (Response User))
     | StarredListFetched String (Result Error (Response StarredList))
     | WantMoreStarred String String
@@ -55,6 +58,7 @@ init _ url key =
     initPage
         { key = key
         , route = toRoute url
+        , query = ""
         , users = Dict.empty
         , repos = Dict.empty
         , starred = Pgs.empty
@@ -64,6 +68,9 @@ init _ url key =
 initPage : Model -> ( Model, Cmd Msg )
 initPage model =
     case model.route of
+        Route.Home ->
+            ( { model | query = "" }, Cmd.none )
+
         Route.User name ->
             let
                 cmd =
@@ -76,7 +83,12 @@ initPage model =
                             , GitHub.starred (StarredListFetched name) name
                             ]
             in
-            ( { model | starred = Pgs.startFetch name model.starred }, cmd )
+            ( { model
+                | starred = Pgs.startFetch name model.starred
+                , query = name
+              }
+            , cmd
+            )
 
         _ ->
             ( model, Cmd.none )
@@ -93,6 +105,12 @@ update msg model =
 
         UrlChanged url ->
             initPage { model | route = toRoute url }
+
+        InputQuery q ->
+            ( { model | query = q }, Cmd.none )
+
+        Search ->
+            ( model, Nav.pushUrl model.key ("/" ++ model.query) )
 
         UserFetched result ->
             case result of
@@ -155,8 +173,10 @@ viewBody model =
         [ h1 [] [ text "Explore GitHub users and Repos" ]
         , div []
             [ p [] [ text "Type username or repo full name and hit 'Go':" ]
-            , input [ size 45 ] []
-            , button [] [ text "Go!" ]
+            , form [ onSubmit Search ]
+                [ input [ size 45, onInput InputQuery, value model.query ] []
+                , button [ type_ "submit" ] [ text "Go!" ]
+                ]
             , nav [ class "header-nav" ]
                 [ a [ href "/" ] [ text "top" ]
                 , a [ href "/ryym" ] [ text "ryym" ]
