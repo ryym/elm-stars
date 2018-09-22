@@ -214,7 +214,7 @@ viewPage model =
             case GhDict.get name model.users of
                 Just user ->
                     div []
-                        [ h2 [] [ text <| user.login ]
+                        [ h2 [] [ text user.login ]
                         , img [ src user.avatar.url, alt "", class "user-avatar" ] []
                         , h3 [] [ text "starred repositories" ]
                         , viewStarred name model
@@ -223,6 +223,20 @@ viewPage model =
                 Nothing ->
                     div []
                         [ p [] [ text "Loading..." ] ]
+
+        Route.Repo owner name ->
+            let
+                fullName =
+                    owner ++ name
+            in
+            case GhDict.get fullName model.repos of
+                Just repo ->
+                    div []
+                        [ h2 [] [ text repo.fullName ] ]
+
+                Nothing ->
+                    div []
+                        [ p [] [ text "Loading.." ] ]
 
         Route.NotFound ->
             div []

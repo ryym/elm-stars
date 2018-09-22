@@ -7,6 +7,7 @@ import Url.Parser exposing ((</>), Parser, map, oneOf, parse, string, top)
 type Route
     = Home
     | User String
+    | Repo String String
     | NotFound
 
 
@@ -15,6 +16,7 @@ route =
     oneOf
         [ map Home top
         , map User (top </> string)
+        , map Repo (top </> string </> string)
         ]
 
 
