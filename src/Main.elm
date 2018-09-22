@@ -28,6 +28,7 @@ type alias Model =
     , users : Dict String User
     , repos : Dict String Repo
     , starred : Pgs String
+    , errMsg : Maybe String
     }
 
 
@@ -62,6 +63,7 @@ init _ url key =
         , users = Dict.empty
         , repos = Dict.empty
         , starred = Pgs.empty
+        , errMsg = Nothing
         }
 
 
@@ -73,21 +75,25 @@ initPage model =
 
         Route.User name ->
             let
-                cmd =
+                fetchUser =
                     if Dict.member name model.users then
                         Cmd.none
 
                     else
-                        Cmd.batch
-                            [ GitHub.user UserFetched name
-                            , GitHub.starred (StarredListFetched name) name
-                            ]
+                        GitHub.user UserFetched name
+
+                fetchStarred =
+                    if Dict.member name model.starred then
+                        Cmd.none
+
+                    else
+                        GitHub.starred (StarredListFetched name) name
             in
             ( { model
                 | starred = Pgs.startFetch name model.starred
                 , query = name
               }
-            , cmd
+            , Cmd.batch [ fetchUser, fetchStarred ]
             )
 
         _ ->
@@ -182,10 +188,21 @@ viewBody model =
                 , a [ href "/ryym" ] [ text "ryym" ]
                 , a [ href "/this/is/invalid/path" ] [ text "404" ]
                 ]
+            , viewErrMsg model.errMsg
             , hr [] []
             , viewPage model
             ]
         ]
+
+
+viewErrMsg : Maybe String -> Html Msg
+viewErrMsg maybe =
+    case maybe of
+        Just msg ->
+            p [] [ text msg ]
+
+        Nothing ->
+            span [] []
 
 
 viewPage : Model -> Html Msg
