@@ -40,6 +40,7 @@ type Msg
     | UserFetched (Result Error (Response User))
     | StarredListFetched String (Result Error (Response StarredList))
     | WantMoreStarred String String
+    | RepoFetched (Result Error (Response ( Repo, User )))
 
 
 main : Program () Model Msg
@@ -94,6 +95,24 @@ initPage model =
                 , query = name
               }
             , Cmd.batch [ fetchUser, fetchStarred ]
+            )
+
+        Route.Repo owner name ->
+            let
+                fullName =
+                    owner ++ "/" ++ name
+
+                fetchRepo =
+                    if GhDict.member fullName model.repos then
+                        Cmd.none
+
+                    else
+                        GitHub.repository RepoFetched fullName
+            in
+            ( { model
+                | query = fullName
+              }
+            , Cmd.batch [ fetchRepo ]
             )
 
         _ ->
@@ -157,6 +176,19 @@ update msg model =
             ( { model | starred = Pgs.startFetch userName model.starred }
             , GitHub.starredMore (StarredListFetched userName) nextUrl
             )
+
+        RepoFetched result ->
+            case result of
+                Ok (Response _ ( repo, user )) ->
+                    ( { model
+                        | users = GhDict.insert user.login user model.users
+                        , repos = GhDict.insert repo.fullName repo model.repos
+                      }
+                    , Cmd.none
+                    )
+
+                Err err ->
+                    ( { model | errMsg = Just (showError err) }, Cmd.none )
 
 
 subscriptions : Model -> Sub Msg
@@ -227,12 +259,14 @@ viewPage model =
         Route.Repo owner name ->
             let
                 fullName =
-                    owner ++ name
+                    owner ++ "/" ++ name
             in
             case GhDict.get fullName model.repos of
                 Just repo ->
                     div []
-                        [ h2 [] [ text repo.fullName ] ]
+                        [ h2 [] [ text repo.fullName ]
+                        , p [] [ text <| Maybe.withDefault "" repo.description ]
+                        ]
 
                 Nothing ->
                     div []

@@ -1,4 +1,4 @@
-module Api.GitHub exposing (StarredList, nextPageUrl, starred, starredMore, user)
+module Api.GitHub exposing (StarredList, nextPageUrl, repository, starred, starredMore, user)
 
 import Api.Http exposing (Error(..), JsonResult, Response, getJson)
 import Debug
@@ -77,3 +77,8 @@ starred msg name =
 starredMore : (Result Error (Response StarredList) -> msg) -> String -> Cmd msg
 starredMore msg nextUrl =
     getJson nextUrl repoListDecoder |> send msg
+
+
+repository : (Result Error (Response ( Repo, User )) -> msg) -> String -> Cmd msg
+repository msg name =
+    getJson (url [ "repos", name ] []) repoDecoder |> send msg
