@@ -1,13 +1,19 @@
-module Api.GitHub exposing (StarredList, nextPageUrl, starred, user)
+module Api.GitHub exposing (StarredList, nextPageUrl, starred, starredMore, user)
 
 import Api.Http exposing (Error(..), JsonResult, Response, getJson)
+import Debug
 import Dict
 import Http exposing (Request)
 import Json.Decode as J exposing (Decoder, field)
 import Repo exposing (Repo)
 import Task
+import Url
 import Url.Builder exposing (QueryParameter)
 import User exposing (User)
+
+
+type alias ResponseResult a =
+    Result Error (Response a)
 
 
 type alias StarredList =
@@ -50,7 +56,7 @@ nextPageUrl res =
         |> Maybe.map (String.split ",")
         |> Maybe.andThen (List.filter (String.contains "rel=\"next\"") >> List.head)
         |> Maybe.andThen (String.split ";" >> List.head)
-        |> Maybe.map (String.slice 1 -1)
+        |> Maybe.map (String.trim >> String.slice 1 -1)
 
 
 send : (Result Error (Response a) -> msg) -> Request (JsonResult a) -> Cmd msg
@@ -66,3 +72,8 @@ user msg name =
 starred : (Result Error (Response StarredList) -> msg) -> String -> Cmd msg
 starred msg name =
     getJson (url [ "users", name, "starred" ] []) repoListDecoder |> send msg
+
+
+starredMore : (Result Error (Response StarredList) -> msg) -> String -> Cmd msg
+starredMore msg nextUrl =
+    getJson nextUrl repoListDecoder |> send msg

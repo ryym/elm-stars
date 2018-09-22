@@ -1,4 +1,4 @@
-module Paginations exposing (Pgs, empty, finishFetch, getIds, isFetching, startFetch)
+module Paginations exposing (Pgs, empty, finishFetch, getIds, isFetching, nextPageUrl, startFetch)
 
 import Dict exposing (Dict)
 import Pagination as Pg exposing (Pg)
@@ -18,24 +18,24 @@ get key =
     Maybe.withDefault Pg.empty << Dict.get key
 
 
-getIds : String -> Pgs v -> List v
-getIds key pgs =
-    case Dict.get key pgs of
-        Just pg ->
-            pg.ids
+getValue : (Pg v -> a) -> a -> String -> Pgs v -> a
+getValue f default key pgs =
+    Dict.get key pgs |> Maybe.map f |> Maybe.withDefault default
 
-        Nothing ->
-            []
+
+getIds : String -> Pgs v -> List v
+getIds =
+    getValue .ids []
 
 
 isFetching : String -> Pgs v -> Bool
-isFetching key pgs =
-    case Dict.get key pgs of
-        Just pg ->
-            pg.isFetching
+isFetching =
+    getValue .isFetching True
 
-        Nothing ->
-            True
+
+nextPageUrl : String -> Pgs v -> Maybe String
+nextPageUrl =
+    getValue .nextPageUrl Nothing
 
 
 startFetch : String -> Pgs v -> Pgs v

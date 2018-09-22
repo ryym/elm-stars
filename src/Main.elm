@@ -1,13 +1,14 @@
 module Main exposing (main)
 
-import Api.GitHub exposing (StarredList)
+import Api.GitHub as GitHub exposing (StarredList)
 import Api.Http exposing (Error, Response(..))
 import Browser
 import Browser.Navigation as Nav
 import Debug
 import Dict exposing (Dict)
 import Html exposing (..)
-import Html.Attributes exposing (alt, class, href, size, src)
+import Html.Attributes exposing (alt, class, href, size, src, type_)
+import Html.Events exposing (onClick)
 import Http
 import Paginations as Pgs exposing (Pgs)
 import Repo exposing (Repo)
@@ -34,6 +35,7 @@ type Msg
     | UrlChanged Url
     | UserFetched (Result Error (Response User))
     | StarredListFetched String (Result Error (Response StarredList))
+    | WantMoreStarred String String
 
 
 main : Program () Model Msg
@@ -70,8 +72,8 @@ initPage model =
 
                     else
                         Cmd.batch
-                            [ Api.GitHub.user UserFetched name
-                            , Api.GitHub.starred (StarredListFetched name) name
+                            [ GitHub.user UserFetched name
+                            , GitHub.starred (StarredListFetched name) name
                             ]
             in
             ( { model | starred = Pgs.startFetch name model.starred }, cmd )
@@ -118,7 +120,7 @@ update msg model =
                             { m | starred = Pgs.finishFetch userName ( repoNames, nextPageUrl ) m.starred }
 
                         nextPageUrl =
-                            Api.GitHub.nextPageUrl res
+                            GitHub.nextPageUrl res
 
                         repoNames =
                             List.map (\( repo, _ ) -> repo.fullName) starredList
@@ -128,6 +130,11 @@ update msg model =
                 Err err ->
                     -- TODO: Handle error.
                     ( model, Cmd.none )
+
+        WantMoreStarred userName nextUrl ->
+            ( { model | starred = Pgs.startFetch userName model.starred }
+            , GitHub.starredMore (StarredListFetched userName) nextUrl
+            )
 
 
 subscriptions : Model -> Sub Msg
@@ -189,11 +196,10 @@ viewPage model =
 
 viewStarred : String -> Model -> Html Msg
 viewStarred userName model =
-    if Pgs.isFetching userName model.starred then
-        div [] [ text "Loading..." ]
-
-    else
-        ul [] <| viewStarredList userName model
+    div []
+        [ ul [] <| viewStarredList userName model
+        , viewLoadMore userName model.starred
+        ]
 
 
 viewStarredList : String -> Model -> List (Html Msg)
@@ -210,3 +216,18 @@ viewStarredList userName model =
     Pgs.getIds userName model.starred
         |> List.foldr (toRepoList model.repos) []
         |> List.map (\repo -> li [] [ text repo.fullName ])
+
+
+viewLoadMore : String -> Pgs String -> Html Msg
+viewLoadMore userName starred =
+    if Pgs.isFetching userName starred then
+        div [] [ text "Loading..." ]
+
+    else
+        case Pgs.nextPageUrl userName starred of
+            Just url ->
+                button [ type_ "button", onClick (WantMoreStarred userName url) ]
+                    [ text "Load more" ]
+
+            Nothing ->
+                span [] []
