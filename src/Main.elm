@@ -5,7 +5,7 @@ import Api.Http exposing (Error, Response(..), showError)
 import Browser
 import Browser.Navigation as Nav
 import Debug
-import Dict exposing (Dict)
+import GhDict exposing (GhDict)
 import Html exposing (..)
 import Html.Attributes exposing (alt, class, href, size, src, type_, value)
 import Html.Events exposing (onClick, onInput, onSubmit)
@@ -25,8 +25,8 @@ type alias Model =
     { key : Nav.Key
     , route : Route
     , query : String
-    , users : Dict String User
-    , repos : Dict String Repo
+    , users : GhDict User
+    , repos : GhDict Repo
     , starred : Pgs String
     , errMsg : Maybe String
     }
@@ -60,8 +60,8 @@ init _ url key =
         { key = key
         , route = toRoute url
         , query = ""
-        , users = Dict.empty
-        , repos = Dict.empty
+        , users = GhDict.empty
+        , repos = GhDict.empty
         , starred = Pgs.empty
         , errMsg = Nothing
         }
@@ -76,14 +76,14 @@ initPage model =
         Route.User name ->
             let
                 fetchUser =
-                    if Dict.member name model.users then
+                    if GhDict.member name model.users then
                         Cmd.none
 
                     else
                         GitHub.user UserFetched name
 
                 fetchStarred =
-                    if Dict.member name model.starred then
+                    if GhDict.member name model.starred then
                         Cmd.none
 
                     else
@@ -121,7 +121,7 @@ update msg model =
         UserFetched result ->
             case result of
                 Ok (Response _ user) ->
-                    ( { model | users = Dict.insert user.login user model.users }, Cmd.none )
+                    ( { model | users = GhDict.insert user.login user model.users }, Cmd.none )
 
                 Err err ->
                     ( { model | errMsg = Just (showError err) }, Cmd.none )
@@ -135,8 +135,8 @@ update msg model =
 
                         mergeBoth ( repo, user ) m =
                             { m
-                                | users = Dict.insert user.login user m.users
-                                , repos = Dict.insert repo.fullName repo m.repos
+                                | users = GhDict.insert user.login user m.users
+                                , repos = GhDict.insert repo.fullName repo m.repos
                             }
 
                         finishFetch m =
@@ -211,7 +211,7 @@ viewPage model =
                 [ p [] [ text "This is Home" ] ]
 
         Route.User name ->
-            case Dict.get name model.users of
+            case GhDict.get name model.users of
                 Just user ->
                     div []
                         [ h2 [] [ text <| user.login ]
@@ -241,7 +241,7 @@ viewStarredList : String -> Model -> List (Html Msg)
 viewStarredList userName model =
     let
         toRepoList repos repoName acc =
-            case Dict.get repoName repos of
+            case GhDict.get repoName repos of
                 Just repo ->
                     repo :: acc
 
