@@ -1,7 +1,7 @@
 module Main exposing (main)
 
 import Api.GitHub as GitHub exposing (StarredList)
-import Api.Http exposing (Error, Response(..))
+import Api.Http exposing (Error, Response(..), showError)
 import Browser
 import Browser.Navigation as Nav
 import Debug
@@ -124,8 +124,7 @@ update msg model =
                     ( { model | users = Dict.insert user.login user model.users }, Cmd.none )
 
                 Err err ->
-                    -- TODO: Handle error.
-                    ( model, Cmd.none )
+                    ( { model | errMsg = Just (showError err) }, Cmd.none )
 
         StarredListFetched userName result ->
             case result of
@@ -152,8 +151,7 @@ update msg model =
                     ( reduce model, Cmd.none )
 
                 Err err ->
-                    -- TODO: Handle error.
-                    ( model, Cmd.none )
+                    ( { model | errMsg = Just (showError err) }, Cmd.none )
 
         WantMoreStarred userName nextUrl ->
             ( { model | starred = Pgs.startFetch userName model.starred }

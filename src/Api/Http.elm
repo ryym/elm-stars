@@ -1,12 +1,41 @@
-module Api.Http exposing (Error(..), JsonResult, Response(..), getJson)
+module Api.Http exposing (Error(..), JsonResult, Response(..), getJson, showError)
 
-import Http exposing (Expect, Request, expectStringResponse, header)
+import Http exposing (Error(..), Expect, Request, expectStringResponse, header)
 import Json.Decode as J exposing (Decoder)
 
 
 type Error
     = HttpError Http.Error
     | JsonError J.Error
+
+
+showError : Error -> String
+showError err =
+    case err of
+        HttpError e ->
+            "Http Error: " ++ showHttpError e
+
+        JsonError e ->
+            "Json Error: " ++ J.errorToString e
+
+
+showHttpError : Http.Error -> String
+showHttpError err =
+    case err of
+        BadUrl url ->
+            "Bad URL " ++ url
+
+        Timeout ->
+            "Timeout"
+
+        NetworkError ->
+            "NetworkError"
+
+        BadStatus res ->
+            "BadStatus " ++ res.status.message
+
+        BadPayload msg _ ->
+            "BadPayload " ++ msg
 
 
 type Response a
