@@ -1,4 +1,13 @@
-module Api.GitHub exposing (StarredList, nextPageUrl, repository, starred, starredMore, user)
+module Api.GitHub exposing
+    ( StarredList
+    , nextPageUrl
+    , repository
+    , stargazers
+    , stargazersMore
+    , starred
+    , starredMore
+    , user
+    )
 
 import Api.Http exposing (Error(..), JsonResult, Response, getJson)
 import Debug
@@ -30,6 +39,11 @@ repoDecoder =
 repoListDecoder : Decoder StarredList
 repoListDecoder =
     J.list repoDecoder
+
+
+userListDecoder : Decoder (List User)
+userListDecoder =
+    J.list User.decoder
 
 
 url : List String -> List QueryParameter -> String
@@ -82,3 +96,13 @@ starredMore msg nextUrl =
 repository : (Result Error (Response ( Repo, User )) -> msg) -> String -> Cmd msg
 repository msg name =
     getJson (url [ "repos", name ] []) repoDecoder |> send msg
+
+
+stargazers : (Result Error (Response (List User)) -> msg) -> String -> Cmd msg
+stargazers msg name =
+    getJson (url [ "repos", name, "stargazers" ] []) userListDecoder |> send msg
+
+
+stargazersMore : (Result Error (Response (List User)) -> msg) -> String -> Cmd msg
+stargazersMore msg nextUrl =
+    getJson nextUrl userListDecoder |> send msg

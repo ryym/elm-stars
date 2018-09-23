@@ -28,6 +28,7 @@ type alias Model =
     , users : GhDict User
     , repos : GhDict Repo
     , starred : Pgs String
+    , stargazers : Pgs String
     , errMsg : Maybe String
     }
 
@@ -41,6 +42,8 @@ type Msg
     | StarredListFetched String (Result Error (Response StarredList))
     | WantMoreStarred String String
     | RepoFetched (Result Error (Response ( Repo, User )))
+    | StargazersFetched String (Result Error (Response (List User)))
+    | WantMoreStargazers String String
 
 
 main : Program () Model Msg
@@ -64,6 +67,7 @@ init _ url key =
         , users = GhDict.empty
         , repos = GhDict.empty
         , starred = Pgs.empty
+        , stargazers = Pgs.empty
         , errMsg = Nothing
         }
 
@@ -108,11 +112,18 @@ initPage model =
 
                     else
                         GitHub.repository RepoFetched fullName
+
+                fetchStargazers =
+                    if GhDict.member fullName model.stargazers then
+                        Cmd.none
+
+                    else
+                        GitHub.stargazers (StargazersFetched fullName) fullName
             in
             ( { model
                 | query = fullName
               }
-            , Cmd.batch [ fetchRepo ]
+            , Cmd.batch [ fetchRepo, fetchStargazers ]
             )
 
         _ ->
@@ -190,6 +201,35 @@ update msg model =
                 Err err ->
                     ( { model | errMsg = Just (showError err) }, Cmd.none )
 
+        StargazersFetched fullName result ->
+            case result of
+                Ok (Response res users) ->
+                    let
+                        reduce m =
+                            List.foldl mergeUser m users |> finishFetch
+
+                        userNames =
+                            List.map .login users
+
+                        mergeUser user m =
+                            { m | users = GhDict.insert user.login user m.users }
+
+                        finishFetch m =
+                            { m | stargazers = Pgs.finishFetch fullName ( userNames, nextPageUrl ) m.stargazers }
+
+                        nextPageUrl =
+                            GitHub.nextPageUrl res
+                    in
+                    ( reduce model, Cmd.none )
+
+                Err err ->
+                    ( { model | errMsg = Just (showError err) }, Cmd.none )
+
+        WantMoreStargazers fullName nextUrl ->
+            ( { model | stargazers = Pgs.startFetch fullName model.stargazers }
+            , GitHub.stargazersMore (StargazersFetched fullName) nextUrl
+            )
+
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
@@ -266,6 +306,8 @@ viewPage model =
                     div []
                         [ h2 [] [ text repo.fullName ]
                         , p [] [ text <| Maybe.withDefault "" repo.description ]
+                        , h3 [] [ text "stargazers" ]
+                        , viewStargazers fullName model
                         ]
 
                 Nothing ->
@@ -281,7 +323,7 @@ viewStarred : String -> Model -> Html Msg
 viewStarred userName model =
     div []
         [ ul [] <| viewStarredList userName model
-        , viewLoadMore userName model.starred
+        , viewLoadMore (WantMoreStarred userName) userName model.starred
         ]
 
 
@@ -301,16 +343,40 @@ viewStarredList userName model =
         |> List.map (\repo -> li [] [ text repo.fullName ])
 
 
-viewLoadMore : String -> Pgs String -> Html Msg
-viewLoadMore userName starred =
-    if Pgs.isFetching userName starred then
+viewLoadMore : (String -> Msg) -> String -> Pgs v -> Html Msg
+viewLoadMore msg key pgs =
+    if Pgs.isFetching key pgs then
         div [] [ text "Loading..." ]
 
     else
-        case Pgs.nextPageUrl userName starred of
+        case Pgs.nextPageUrl key pgs of
             Just url ->
-                button [ type_ "button", onClick (WantMoreStarred userName url) ]
+                button [ type_ "button", onClick (msg url) ]
                     [ text "Load more" ]
 
             Nothing ->
                 span [] []
+
+
+viewStargazers : String -> Model -> Html Msg
+viewStargazers fullName model =
+    div []
+        [ ul [] <| viewStargazerList fullName model
+        , viewLoadMore (WantMoreStargazers fullName) fullName model.stargazers
+        ]
+
+
+viewStargazerList : String -> Model -> List (Html Msg)
+viewStargazerList fullName model =
+    let
+        toUserList users userName acc =
+            case GhDict.get userName users of
+                Just user ->
+                    user :: acc
+
+                Nothing ->
+                    acc
+    in
+    Pgs.getIds fullName model.stargazers
+        |> List.foldr (toUserList model.users) []
+        |> List.map (\user -> li [] [ text user.login ])
