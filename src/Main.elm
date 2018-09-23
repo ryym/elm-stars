@@ -42,10 +42,14 @@ main =
         { view = view
         , init = init
         , update = update
-        , subscriptions = subscriptions
+        , subscriptions = always Sub.none
         , onUrlRequest = LinkClicked
         , onUrlChange = UrlChanged
         }
+
+
+
+-- INIT --
 
 
 init : () -> Url -> Nav.Key -> ( Model, Cmd Msg )
@@ -78,14 +82,20 @@ initPage model =
             ( model, Cmd.none )
 
 
+
+-- UPDATE --
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        LinkClicked (Browser.Internal url) ->
-            ( model, Nav.pushUrl model.key (Url.toString url) )
+        LinkClicked urlRequest ->
+            case urlRequest of
+                Browser.Internal url ->
+                    ( model, Nav.pushUrl model.key (Url.toString url) )
 
-        LinkClicked (Browser.External href) ->
-            ( model, Nav.load href )
+                Browser.External href ->
+                    ( model, Nav.load href )
 
         UrlChanged url ->
             initPage { model | route = toRoute url }
@@ -106,27 +116,8 @@ update msg model =
 
         StarredListFetched userName result ->
             case result of
-                Ok (Response res starredList) ->
-                    let
-                        reduce m =
-                            List.foldl mergeBoth m starredList |> finishFetch
-
-                        mergeBoth ( repo, user ) m =
-                            { m
-                                | users = GhDict.insert user.login user m.users
-                                , repos = GhDict.insert repo.fullName repo m.repos
-                            }
-
-                        finishFetch m =
-                            { m | starred = Pgs.finishFetch userName ( repoNames, nextPageUrl ) m.starred }
-
-                        nextPageUrl =
-                            GitHub.nextPageUrl res
-
-                        repoNames =
-                            List.map (\( repo, _ ) -> repo.fullName) starredList
-                    in
-                    ( reduce model, Cmd.none )
+                Ok res ->
+                    ( updateStarred userName model res, Cmd.none )
 
                 Err err ->
                     ( { model | errMsg = Just (showError err) }, Cmd.none )
@@ -151,24 +142,8 @@ update msg model =
 
         StargazersFetched fullName result ->
             case result of
-                Ok (Response res users) ->
-                    let
-                        reduce m =
-                            List.foldl mergeUser m users |> finishFetch
-
-                        userNames =
-                            List.map .login users
-
-                        mergeUser user m =
-                            { m | users = GhDict.insert user.login user m.users }
-
-                        finishFetch m =
-                            { m | stargazers = Pgs.finishFetch fullName ( userNames, nextPageUrl ) m.stargazers }
-
-                        nextPageUrl =
-                            GitHub.nextPageUrl res
-                    in
-                    ( reduce model, Cmd.none )
+                Ok res ->
+                    ( updateStargazers fullName model res, Cmd.none )
 
                 Err err ->
                     ( { model | errMsg = Just (showError err) }, Cmd.none )
@@ -179,36 +154,80 @@ update msg model =
             )
 
 
-subscriptions : Model -> Sub Msg
-subscriptions _ =
-    Sub.none
+updateStarred : String -> Model -> Response StarredList -> Model
+updateStarred userName model (Response res starredList) =
+    let
+        mergeBoth ( repo, user ) m =
+            { m
+                | users = GhDict.insert user.login user m.users
+                , repos = GhDict.insert repo.fullName repo m.repos
+            }
+
+        finishFetch m =
+            { m
+                | starred =
+                    Pgs.finishFetch userName
+                        ( repoNames, GitHub.nextPageUrl res )
+                        m.starred
+            }
+
+        repoNames =
+            List.map (\( repo, _ ) -> repo.fullName) starredList
+    in
+    List.foldl mergeBoth model starredList |> finishFetch
+
+
+updateStargazers : String -> Model -> Response (List User) -> Model
+updateStargazers fullName model (Response res users) =
+    let
+        userNames =
+            List.map .login users
+
+        mergeUser user m =
+            { m | users = GhDict.insert user.login user m.users }
+
+        finishFetch m =
+            { m
+                | stargazers =
+                    Pgs.finishFetch fullName
+                        ( userNames, GitHub.nextPageUrl res )
+                        m.stargazers
+            }
+    in
+    List.foldl mergeUser model users |> finishFetch
+
+
+
+-- VIEW --
 
 
 view : Model -> Browser.Document Msg
 view model =
     { title = "Elm Sample - GitHub stars"
-    , body = [ viewBody model ]
-    }
-
-
-viewBody : Model -> Html Msg
-viewBody model =
-    div []
-        [ h1 [] [ text "Explore GitHub users and Repos" ]
-        , div []
-            [ p [] [ text "Type username or repo full name and hit 'Go':" ]
-            , form [ onSubmit Search ]
-                [ input [ size 45, onInput InputQuery, value model.query ] []
-                , button [ type_ "submit" ] [ text "Go!" ]
-                ]
-            , nav [ class "header-nav" ]
-                [ a [ href "/" ] [ text "top" ]
-                , a [ href "/ryym" ] [ text "ryym" ]
-                , a [ href "/this/is/invalid/path" ] [ text "404" ]
-                ]
+    , body =
+        [ div []
+            [ h1 [] [ text "Explore GitHub users and Repos" ]
+            , viewSearchForm model.query
             , viewErrMsg model.errMsg
             , hr [] []
             , viewPage model
+            ]
+        ]
+    }
+
+
+viewSearchForm : String -> Html Msg
+viewSearchForm query =
+    div []
+        [ p [] [ text "Type username or repo full name and hit 'Go':" ]
+        , form [ onSubmit Search ]
+            [ input [ size 45, onInput InputQuery, value query ] []
+            , button [ type_ "submit" ] [ text "Go!" ]
+            ]
+        , nav [ class "header-nav" ]
+            [ a [ href "/" ] [ text "top" ]
+            , a [ href "/ryym" ] [ text "ryym" ]
+            , a [ href "/this/is/invalid/path" ] [ text "404" ]
             ]
         ]
 
