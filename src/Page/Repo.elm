@@ -72,7 +72,7 @@ viewStargazerList : String -> Model m -> List (Html Msg)
 viewStargazerList fullName model =
     Pgs.getIds fullName model.stargazers
         |> List.foldr (toUserList model.users) []
-        |> List.map (\user -> li [] [ text user.login ])
+        |> List.map viewUserItem
 
 
 toUserList users userName acc =
@@ -82,3 +82,9 @@ toUserList users userName acc =
 
         Nothing ->
             acc
+
+
+viewUserItem : User -> Html Msg
+viewUserItem user =
+    li []
+        [ a [ href ("/" ++ user.login) ] [ text user.login ] ]

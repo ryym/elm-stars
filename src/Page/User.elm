@@ -73,7 +73,7 @@ viewStarredList : String -> Model m -> List (Html Msg)
 viewStarredList userName model =
     Pgs.getIds userName model.starred
         |> List.foldr (toRepoList model.repos) []
-        |> List.map (\repo -> li [] [ text repo.fullName ])
+        |> List.map viewRepoItem
 
 
 toRepoList : GhDict Repo -> String -> List Repo -> List Repo
@@ -84,3 +84,9 @@ toRepoList repos repoName acc =
 
         Nothing ->
             acc
+
+
+viewRepoItem : Repo -> Html Msg
+viewRepoItem repo =
+    li []
+        [ a [ href ("/" ++ repo.fullName) ] [ text repo.fullName ] ]
