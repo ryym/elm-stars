@@ -11,6 +11,7 @@ import Html.Attributes exposing (alt, class, href, size, src, type_, value)
 import Html.Events exposing (onClick, onInput, onSubmit)
 import Http
 import Msg exposing (Msg(..))
+import Page.User
 import Paginations as Pgs exposing (Pgs)
 import Repo exposing (Repo)
 import Route exposing (Route, toRoute)
@@ -67,27 +68,7 @@ initPage model =
             ( { model | query = "" }, Cmd.none )
 
         Route.User name ->
-            let
-                fetchUser =
-                    if GhDict.member name model.users then
-                        Cmd.none
-
-                    else
-                        GitHub.user UserFetched name
-
-                fetchStarred =
-                    if GhDict.member name model.starred then
-                        Cmd.none
-
-                    else
-                        GitHub.starred (StarredListFetched name) name
-            in
-            ( { model
-                | starred = Pgs.startFetch name model.starred
-                , query = name
-              }
-            , Cmd.batch [ fetchUser, fetchStarred ]
-            )
+            Page.User.init name model
 
         Route.Repo owner name ->
             let
@@ -271,18 +252,7 @@ viewPage model =
                 [ p [] [ text "This is Home" ] ]
 
         Route.User name ->
-            case GhDict.get name model.users of
-                Just user ->
-                    div []
-                        [ h2 [] [ text user.login ]
-                        , img [ src user.avatar.url, alt "", class "user-avatar" ] []
-                        , h3 [] [ text "starred repositories" ]
-                        , viewStarred name model
-                        ]
-
-                Nothing ->
-                    div []
-                        [ p [] [ text "Loading..." ] ]
+            Page.User.view name model
 
         Route.Repo owner name ->
             let
@@ -305,30 +275,6 @@ viewPage model =
         Route.NotFound ->
             div []
                 [ p [] [ text "Not Found" ] ]
-
-
-viewStarred : String -> Model -> Html Msg
-viewStarred userName model =
-    div []
-        [ ul [] <| viewStarredList userName model
-        , viewLoadMore (WantMoreStarred userName) userName model.starred
-        ]
-
-
-viewStarredList : String -> Model -> List (Html Msg)
-viewStarredList userName model =
-    let
-        toRepoList repos repoName acc =
-            case GhDict.get repoName repos of
-                Just repo ->
-                    repo :: acc
-
-                Nothing ->
-                    acc
-    in
-    Pgs.getIds userName model.starred
-        |> List.foldr (toRepoList model.repos) []
-        |> List.map (\repo -> li [] [ text repo.fullName ])
 
 
 viewLoadMore : (String -> Msg) -> String -> Pgs v -> Html Msg
