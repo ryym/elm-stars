@@ -10,6 +10,7 @@ import Html exposing (..)
 import Html.Attributes exposing (alt, class, href, size, src, type_, value)
 import Html.Events exposing (onClick, onInput, onSubmit)
 import Http
+import Msg exposing (Msg(..))
 import Paginations as Pgs exposing (Pgs)
 import Repo exposing (Repo)
 import Route exposing (Route, toRoute)
@@ -31,19 +32,6 @@ type alias Model =
     , stargazers : Pgs String
     , errMsg : Maybe String
     }
-
-
-type Msg
-    = LinkClicked Browser.UrlRequest
-    | UrlChanged Url
-    | InputQuery String
-    | Search
-    | UserFetched (Result Error (Response User))
-    | StarredListFetched String (Result Error (Response StarredList))
-    | WantMoreStarred String String
-    | RepoFetched (Result Error (Response ( Repo, User )))
-    | StargazersFetched String (Result Error (Response (List User)))
-    | WantMoreStargazers String String
 
 
 main : Program () Model Msg
