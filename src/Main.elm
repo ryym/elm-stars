@@ -11,6 +11,7 @@ import Html.Attributes exposing (alt, class, href, size, src, type_, value)
 import Html.Events exposing (onClick, onInput, onSubmit)
 import Http
 import Msg exposing (Msg(..))
+import Page.Repo
 import Page.User
 import Paginations as Pgs exposing (Pgs)
 import Repo exposing (Repo)
@@ -71,29 +72,7 @@ initPage model =
             Page.User.init name model
 
         Route.Repo owner name ->
-            let
-                fullName =
-                    owner ++ "/" ++ name
-
-                fetchRepo =
-                    if GhDict.member fullName model.repos then
-                        Cmd.none
-
-                    else
-                        GitHub.repository RepoFetched fullName
-
-                fetchStargazers =
-                    if GhDict.member fullName model.stargazers then
-                        Cmd.none
-
-                    else
-                        GitHub.stargazers (StargazersFetched fullName) fullName
-            in
-            ( { model
-                | query = fullName
-              }
-            , Cmd.batch [ fetchRepo, fetchStargazers ]
-            )
+            Page.Repo.init (owner ++ "/" ++ name) model
 
         _ ->
             ( model, Cmd.none )
@@ -255,62 +234,8 @@ viewPage model =
             Page.User.view name model
 
         Route.Repo owner name ->
-            let
-                fullName =
-                    owner ++ "/" ++ name
-            in
-            case GhDict.get fullName model.repos of
-                Just repo ->
-                    div []
-                        [ h2 [] [ text repo.fullName ]
-                        , p [] [ text <| Maybe.withDefault "" repo.description ]
-                        , h3 [] [ text "stargazers" ]
-                        , viewStargazers fullName model
-                        ]
-
-                Nothing ->
-                    div []
-                        [ p [] [ text "Loading.." ] ]
+            Page.Repo.view (owner ++ "/" ++ name) model
 
         Route.NotFound ->
             div []
                 [ p [] [ text "Not Found" ] ]
-
-
-viewLoadMore : (String -> Msg) -> String -> Pgs v -> Html Msg
-viewLoadMore msg key pgs =
-    if Pgs.isFetching key pgs then
-        div [] [ text "Loading..." ]
-
-    else
-        case Pgs.nextPageUrl key pgs of
-            Just url ->
-                button [ type_ "button", onClick (msg url) ]
-                    [ text "Load more" ]
-
-            Nothing ->
-                span [] []
-
-
-viewStargazers : String -> Model -> Html Msg
-viewStargazers fullName model =
-    div []
-        [ ul [] <| viewStargazerList fullName model
-        , viewLoadMore (WantMoreStargazers fullName) fullName model.stargazers
-        ]
-
-
-viewStargazerList : String -> Model -> List (Html Msg)
-viewStargazerList fullName model =
-    let
-        toUserList users userName acc =
-            case GhDict.get userName users of
-                Just user ->
-                    user :: acc
-
-                Nothing ->
-                    acc
-    in
-    Pgs.getIds fullName model.stargazers
-        |> List.foldr (toUserList model.users) []
-        |> List.map (\user -> li [] [ text user.login ])
