@@ -30,19 +30,22 @@ init name model =
             else
                 GitHub.user UserFetched name
 
-        fetchStarred =
-            if GhDict.member name model.starred then
-                Cmd.none
-
-            else
-                GitHub.starred (StarredListFetched name) name
+        hasFethcedStarred =
+            GhDict.member name model.starred
     in
-    ( { model
-        | starred = Pgs.startFetch name model.starred
-        , query = name
-      }
-    , Cmd.batch [ fetchUser, fetchStarred ]
-    )
+    if hasFethcedStarred then
+        ( { model | query = name }, fetchUser )
+
+    else
+        ( { model
+            | starred = Pgs.startFetch name model.starred
+            , query = name
+          }
+        , Cmd.batch
+            [ fetchUser
+            , GitHub.starred (StarredListFetched name) name
+            ]
+        )
 
 
 view : String -> Model m -> Html Msg

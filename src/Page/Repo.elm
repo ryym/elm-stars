@@ -34,18 +34,22 @@ init fullName_ model =
             else
                 GitHub.repository RepoFetched fullName
 
-        fetchStargazers =
-            if GhDict.member fullName model.stargazers then
-                Cmd.none
-
-            else
-                GitHub.stargazers (StargazersFetched fullName) fullName
+        hasFetchedStargazers =
+            GhDict.member fullName model.stargazers
     in
-    ( { model
-        | query = fullName
-      }
-    , Cmd.batch [ fetchRepo, fetchStargazers ]
-    )
+    if hasFetchedStargazers then
+        ( { model | query = fullName }, fetchRepo )
+
+    else
+        ( { model
+            | stargazers = Pgs.startFetch fullName model.stargazers
+            , query = fullName
+          }
+        , Cmd.batch
+            [ fetchRepo
+            , GitHub.stargazers (StargazersFetched fullName) fullName
+            ]
+        )
 
 
 view : FullName -> Model m -> Html Msg
