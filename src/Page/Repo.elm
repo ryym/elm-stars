@@ -8,6 +8,7 @@ import Msg exposing (Msg(..))
 import Page.Part exposing (viewLoadMore)
 import Paginations as Pgs exposing (Pgs)
 import Repo exposing (Repo)
+import Repo.FullName as FullName exposing (FullName)
 import User exposing (User)
 
 
@@ -20,9 +21,12 @@ type alias Model m =
     }
 
 
-init : String -> Model m -> ( Model m, Cmd Msg )
-init fullName model =
+init : FullName -> Model m -> ( Model m, Cmd Msg )
+init fullName_ model =
     let
+        fullName =
+            FullName.toString fullName_
+
         fetchRepo =
             if GhDict.member fullName model.repos then
                 Cmd.none
@@ -44,12 +48,16 @@ init fullName model =
     )
 
 
-view : String -> Model m -> Html Msg
-view fullName model =
+view : FullName -> Model m -> Html Msg
+view fullName_ model =
+    let
+        fullName =
+            FullName.toString fullName_
+    in
     case GhDict.get fullName model.repos of
         Just repo ->
             div []
-                [ h2 [] [ text repo.fullName ]
+                [ h2 [] [ text fullName ]
                 , p [] [ text <| Maybe.withDefault "" repo.description ]
                 , h3 [] [ text "stargazers" ]
                 , viewStargazers fullName model

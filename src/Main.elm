@@ -75,8 +75,8 @@ initPage model =
         Route.User name ->
             Page.User.init name model
 
-        Route.Repo owner name ->
-            Page.Repo.init (owner ++ "/" ++ name) model
+        Route.Repo fullName ->
+            Page.Repo.init fullName model
 
         _ ->
             ( model, Cmd.none )
@@ -132,7 +132,7 @@ update msg model =
                 Ok (Response _ ( repo, user )) ->
                     ( { model
                         | users = GhDict.insert user.login user model.users
-                        , repos = GhDict.insert repo.fullName repo model.repos
+                        , repos = GhDict.insert (Repo.fullName repo) repo model.repos
                       }
                     , Cmd.none
                     )
@@ -160,7 +160,7 @@ updateStarred userName model (Response res starredList) =
         mergeBoth ( repo, user ) m =
             { m
                 | users = GhDict.insert user.login user m.users
-                , repos = GhDict.insert repo.fullName repo m.repos
+                , repos = GhDict.insert (Repo.fullName repo) repo m.repos
             }
 
         finishFetch m =
@@ -172,7 +172,7 @@ updateStarred userName model (Response res starredList) =
             }
 
         repoNames =
-            List.map (\( repo, _ ) -> repo.fullName) starredList
+            List.map (\( repo, _ ) -> Repo.fullName repo) starredList
     in
     List.foldl mergeBoth model starredList |> finishFetch
 
@@ -252,8 +252,8 @@ viewPage model =
         Route.User name ->
             Page.User.view name model
 
-        Route.Repo owner name ->
-            Page.Repo.view (owner ++ "/" ++ name) model
+        Route.Repo fullName ->
+            Page.Repo.view fullName model
 
         Route.NotFound ->
             div []

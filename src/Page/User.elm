@@ -89,4 +89,4 @@ toRepoList repos repoName acc =
 viewRepoItem : Repo -> Html Msg
 viewRepoItem repo =
     li []
-        [ a [ href ("/" ++ repo.fullName) ] [ text repo.fullName ] ]
+        [ a [ href ("/" ++ Repo.fullName repo) ] [ text (Repo.fullName repo) ] ]
