@@ -4,8 +4,9 @@ import Api.GitHub exposing (StarredList)
 import Api.Http exposing (Error, Response(..))
 import Browser
 import Repo exposing (Repo)
+import Repo.FullName exposing (FullName)
 import Url exposing (Url)
-import User exposing (User)
+import User exposing (User, UserName)
 
 
 {-| Msg is shared among pages.
@@ -16,8 +17,8 @@ type Msg
     | InputQuery String
     | Search
     | UserFetched (Result Error (Response User))
-    | StarredListFetched String (Result Error (Response StarredList))
-    | WantMoreStarred String String
+    | StarredListFetched UserName (Result Error (Response StarredList))
+    | WantMoreStarred UserName String
     | RepoFetched (Result Error (Response ( Repo, User )))
-    | StargazersFetched String (Result Error (Response (List User)))
-    | WantMoreStargazers String String
+    | StargazersFetched FullName (Result Error (Response (List User)))
+    | WantMoreStargazers FullName String

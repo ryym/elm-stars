@@ -47,7 +47,7 @@ init fullName_ model =
           }
         , Cmd.batch
             [ fetchRepo
-            , GitHub.stargazers (StargazersFetched fullName) fullName
+            , GitHub.stargazers (StargazersFetched fullName_) fullName
             ]
         )
 
@@ -64,7 +64,7 @@ view fullName_ model =
                 [ a [ href repo.htmlUrl, target "_blank" ] [ h2 [] [ text fullName ] ]
                 , p [] [ text <| Maybe.withDefault "no description" repo.description ]
                 , h3 [] [ text "stargazers" ]
-                , viewStargazers fullName model
+                , viewStargazers fullName_ model
                 ]
 
         Nothing ->
@@ -72,17 +72,20 @@ view fullName_ model =
                 [ p [] [ text "Loading.." ] ]
 
 
-viewStargazers : String -> Model m -> Html Msg
+viewStargazers : FullName -> Model m -> Html Msg
 viewStargazers fullName model =
     div []
         [ ul [ class "user-list" ] <| viewStargazerList fullName model
-        , viewLoadMore (WantMoreStargazers fullName) fullName model.stargazers
+        , viewLoadMore
+            (WantMoreStargazers fullName)
+            (FullName.toString fullName)
+            model.stargazers
         ]
 
 
-viewStargazerList : String -> Model m -> List (Html Msg)
+viewStargazerList : FullName -> Model m -> List (Html Msg)
 viewStargazerList fullName model =
-    Pgs.getIds fullName model.stargazers
+    Pgs.getIds (FullName.toString fullName) model.stargazers
         |> List.foldr (toUserList model.users) []
         |> List.map viewUserItem
 

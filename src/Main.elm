@@ -15,13 +15,10 @@ import Page.Repo
 import Page.User
 import Paginations as Pgs exposing (Pgs)
 import Repo exposing (Repo)
+import Repo.FullName as FullName exposing (FullName)
 import Route exposing (Route, toRoute)
 import Url exposing (Url)
 import User exposing (User)
-
-
-
--- TODO: Define UserName and RepoName types for clarity.
 
 
 type alias Model =
@@ -149,7 +146,7 @@ update msg model =
                     ( { model | errMsg = Just (showError err) }, Cmd.none )
 
         WantMoreStargazers fullName nextUrl ->
-            ( { model | stargazers = Pgs.startFetch fullName model.stargazers }
+            ( { model | stargazers = Pgs.startFetch (FullName.toString fullName) model.stargazers }
             , GitHub.stargazersMore (StargazersFetched fullName) nextUrl
             )
 
@@ -177,7 +174,7 @@ updateStarred userName model (Response res starredList) =
     List.foldl mergeBoth model starredList |> finishFetch
 
 
-updateStargazers : String -> Model -> Response (List User) -> Model
+updateStargazers : FullName -> Model -> Response (List User) -> Model
 updateStargazers fullName model (Response res users) =
     let
         userNames =
@@ -189,7 +186,8 @@ updateStargazers fullName model (Response res users) =
         finishFetch m =
             { m
                 | stargazers =
-                    Pgs.finishFetch fullName
+                    Pgs.finishFetch
+                        (FullName.toString fullName)
                         ( userNames, GitHub.nextPageUrl res )
                         m.stargazers
             }

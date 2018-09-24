@@ -1,6 +1,10 @@
-module User exposing (User, decoder)
+module User exposing (User, UserName, decoder)
 
 import Json.Decode as J exposing (Decoder, field)
+
+
+type alias UserName =
+    String
 
 
 type alias Avatar =
@@ -8,7 +12,7 @@ type alias Avatar =
 
 
 type alias User =
-    { login : String
+    { login : UserName
     , avatar : Avatar
     }
 
