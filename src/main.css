@@ -1,8 +1,13 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 body {
   font-family: 'Source Sans Pro', 'Trebuchet MS', 'Lucida Grande',
     'Bitstream Vera Sans', 'Helvetica Neue', sans-serif;
   margin: 0;
-  text-align: center;
   color: #293c4b;
 }
 
@@ -14,10 +19,68 @@ hr {
   opacity: 0.8;
 }
 
+ul {
+  list-style-type: none;
+  padding: 0 20px;
+}
+
+.header {
+  text-align: center;
+}
+
+.page-root {
+  margin: 0 10px;
+}
+
 .header-nav > a {
   margin: 0 12px;
 }
 
+.load-more-loading {
+  text-align: center;
+  font-size: 18px;
+  margin: 20px auto;
+}
+
+.load-more-btn {
+  border-radius: 2px;
+  border: 2px solid #293c4b;
+  cursor: pointer;
+  display: block;
+  font-size: 18px;
+  margin: 20px auto;
+  padding: 8px 20px;
+  text-align: center;
+}
+
+.user-list {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.user-item {
+  margin: 20px 0 40px;
+  width: 100px;
+  padding-right: 8px;
+}
+
 .user-avatar {
   width: 72px;
+}
+
+.user-login {
+  word-wrap: break-word;
+}
+
+.repo-item {
+  margin: 20px 0 40px;
+}
+
+.repo-item-title {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.repo-item-description {
+  padding-left: 8px;
 }

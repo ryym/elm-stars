@@ -206,11 +206,14 @@ view model =
     { title = "Elm Sample - GitHub stars"
     , body =
         [ div []
-            [ h1 [] [ text "Explore GitHub users and Repos" ]
-            , viewSearchForm model.query
-            , viewErrMsg model.errMsg
+            [ div [ class "header" ]
+                [ h1 [] [ text "Explore GitHub users and Repos" ]
+                , viewSearchForm model.query
+                , viewErrMsg model.errMsg
+                ]
             , hr [] []
-            , viewPage model
+            , div [ class "page-root" ]
+                [ viewPage model ]
             ]
         ]
     }

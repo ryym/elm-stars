@@ -57,8 +57,8 @@ view fullName_ model =
     case GhDict.get fullName model.repos of
         Just repo ->
             div []
-                [ h2 [] [ text fullName ]
-                , p [] [ text <| Maybe.withDefault "" repo.description ]
+                [ a [ href repo.htmlUrl, target "_blank" ] [ h2 [] [ text fullName ] ]
+                , p [] [ text <| Maybe.withDefault "no description" repo.description ]
                 , h3 [] [ text "stargazers" ]
                 , viewStargazers fullName model
                 ]
@@ -71,7 +71,7 @@ view fullName_ model =
 viewStargazers : String -> Model m -> Html Msg
 viewStargazers fullName model =
     div []
-        [ ul [] <| viewStargazerList fullName model
+        [ ul [ class "user-list" ] <| viewStargazerList fullName model
         , viewLoadMore (WantMoreStargazers fullName) fullName model.stargazers
         ]
 
@@ -94,5 +94,9 @@ toUserList users userName acc =
 
 viewUserItem : User -> Html Msg
 viewUserItem user =
-    li []
-        [ a [ href ("/" ++ user.login) ] [ text user.login ] ]
+    li [ class "user-item" ]
+        [ a [ href ("/" ++ user.login) ]
+            [ img [ class "user-avatar", src user.avatar.url ] []
+            , div [ class "user-login" ] [ text user.login ]
+            ]
+        ]

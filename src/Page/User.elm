@@ -88,5 +88,12 @@ toRepoList repos repoName acc =
 
 viewRepoItem : Repo -> Html Msg
 viewRepoItem repo =
-    li []
-        [ a [ href ("/" ++ Repo.fullName repo) ] [ text (Repo.fullName repo) ] ]
+    li [ class "repo-item" ]
+        [ div [ class "repo-item-title" ]
+            [ a [ href <| "/" ++ Repo.fullName repo ] [ text repo.name ]
+            , text " by "
+            , a [ href <| "/" ++ repo.ownerName ] [ text repo.ownerName ]
+            ]
+        , p [ class "repo-item-description" ]
+            [ text <| Maybe.withDefault "no description" repo.description ]
+        ]
